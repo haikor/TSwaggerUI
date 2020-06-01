@@ -18,8 +18,9 @@
             function (i, responseBody) {
                 if ($(responseBody).find(".copyResponse").length > 0) return;
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyResponse' href='javascript:void(0);'>复制响应</a></div>"))
-                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
-                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
+                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='downCsv' href='javascript:void(0);'>下载csv</a></div>"))
+                $(responseBody).append($("<div style='left:10px;float:left;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
+                $(responseBody).append($("<div style='left:10px;float:left;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
                 added = true;
             }
 
@@ -30,15 +31,35 @@
              new Clipboard('.copyResponse', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    return $button.parent().parent().find("pre").text();
+                    var value  = $button.parent().parent().find("pre").text();
+                    console.log(value);
+                    return value;
                 }
+            }
+           );
+
+
+             $('.downCsv').each(function() {
+                 var $button = $(this);
+                 if($button.data("done")){
+                     return;
+                 }
+                 $button.data("done",true);
+                 $button.click(function(){
+                 var value  = $(this).parent().parent().find("pre").text();
+                 var csv = json2csv(JSON.parse(value));
+                 var method = $(this).parents(".operation").attr("id");
+                 saveAs(new Blob([csv],{type:"text/csv;charset=utf-8"}),method+".csv");
+                 });
             }
            );
 
             new Clipboard('.copyURL', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    return $button.parents(".response").find(".request_url pre").text();
+                    var value  = $button.parents(".response").find(".request_url pre").text();
+                    console.log(value);
+                    return value;
                 }
             }
            );
@@ -46,7 +67,9 @@
            new Clipboard('.copyCURL', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    return $button.parents(".response").find("div.curl pre").text();
+                    var value  = $button.parents(".response").find("div.curl pre").text();
+                    console.log(value);
+                    return value;
                 }
             }
            );
@@ -89,6 +112,71 @@
                 input.val(value);
             }
         });
+    }
+
+    function json2csv(json){
+        if(!json){
+            return "";
+        }
+        if(Array.isArray(json)){
+            //获取所有头
+            var headers = [];
+             for(var i in json){
+                 for(var key in json[i]){
+                     headers.push(key);
+                 }
+             }
+            headers = Array.from(new Set(headers));
+            var csv = "";
+            //输出头
+            csv+=headers.join();
+            //输出数据
+            for(var i in json){
+                csv+="\n";
+                 for(var j in headers){
+                     var header = headers[j];
+                     if(j>0){
+                         csv+=",";
+                     }
+                     csv += json[i][header];
+                 }
+             }
+            return csv;
+        }
+
+        for(var k in json){
+            if(Array.isArray(json[k])){
+                return json2csv(json[k]);
+               }
+        }
+        return "";
+    }
+
+
+    /**
+ * 保存
+ * @param  {Blob} blob
+ * @param  {String} filename 想要保存的文件名称
+ */
+    function saveAs(blob, filename) {
+        if (window.navigator.msSaveOrOpenBlob) {
+            navigator.msSaveBlob(blob, filename);
+        } else {
+            var link = document.createElement("a");
+            var body = document.querySelector("body");
+
+            link.href = window.URL.createObjectURL(blob);
+            link.download = filename;
+
+            // fix Firefox
+            link.style.display = "none";
+            body.appendChild(link);
+
+            link.click();
+            body.removeChild(link);
+
+            window.URL.revokeObjectURL(link.href);
+        }
     }
 
     setInterval(render, 500);
