@@ -14,13 +14,13 @@
 
     function render() {
         var added = false;
-        $(".response_body").each(
+        $(".sandbox_header").each(
             function (i, responseBody) {
                 if ($(responseBody).find(".copyResponse").length > 0) return;
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyResponse' href='javascript:void(0);'>复制响应</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='downCsv' href='javascript:void(0);'>下载csv</a></div>"))
-                $(responseBody).append($("<div style='left:10px;float:left;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
-                $(responseBody).append($("<div style='left:10px;float:left;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
+                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
+                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
                 added = true;
             }
 
@@ -31,7 +31,7 @@
              new Clipboard('.copyResponse', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    var value  = $button.parent().parent().find("pre").text();
+                    var value  = $button.parents(".operation").find(".response_body").find("pre").text();
                     console.log(value);
                     return value;
                 }
@@ -46,7 +46,7 @@
                  }
                  $button.data("done",true);
                  $button.click(function(){
-                 var value  = $(this).parent().parent().find("pre").text();
+                 var value  = $(this).parents(".operation").find(".response_body").find("pre").text();
                  var csv = json2csv(JSON.parse(value));
                  var method = $(this).parents(".operation").attr("id");
                  saveAs(new Blob([csv],{type:"text/csv;charset=utf-8"}),method+".csv");
@@ -57,7 +57,7 @@
             new Clipboard('.copyURL', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    var value  = $button.parents(".response").find(".request_url pre").text();
+                    var value  = $button.parents(".operation").find(".response").find(".request_url pre").text();
                     console.log(value);
                     return value;
                 }
@@ -67,7 +67,7 @@
            new Clipboard('.copyCURL', {
                 text: function (trigger) {
                     var $button = $(trigger);
-                    var value  = $button.parents(".response").find("div.curl pre").text();
+                    var value  = $button.parents(".operation").find(".response").find("div.curl pre").text();
                     console.log(value);
                     return value;
                 }
@@ -138,15 +138,42 @@
                      if(j>0){
                          csv+=",";
                      }
-                     csv += json[i][header];
+                     var value = json[i][header];
+                     if(value){
+                         if(typeof value =="object"){
+                             value  = JSON.stringify(value);
+                         }
+                         if(typeof value =="string" && (value.indexOf("\"")>-1 ||  value.indexOf(",")>-1)){
+                             value = "\""+ (value.replace(/\"/g,"\"\""))+"\"";
+                         }
+                         if(typeof value =="string" && value.match(/^\d{8,}$/)){
+                             value = "\t"+value;
+                         }
+                         if((header.indexOf("time") > -1 || header.indexOf("gmt") > -1|| header.indexOf("date") > -1)&&  Number.isInteger(value)){
+                             value = new Date(value+3600*8*1000).toISOString().replace("T"," ").replace(/\..*/,"")
+                         }
+                     }
+	      if(value == undefined){
+		value  = null;
+                 }
+                     csv += value;
                  }
              }
             return csv;
         }
 
         for(var k in json){
+            if(!json[k]){
+                continue;
+            }
             if(Array.isArray(json[k])){
                 return json2csv(json[k]);
+               }
+            if(typeof (json[k]) == "object"){
+                var ret = json2csv(json[k]);
+                if(ret){
+                    return ret;
+                }
                }
         }
         return "";
@@ -179,7 +206,7 @@
         }
     }
 
-    setInterval(render, 500);
+    setInterval(render, 1000);
 
-    setInterval(autoSave, 500);
+    setInterval(autoSave, 1000);
 })();
