@@ -130,6 +130,17 @@
             var csv = "";
             //输出头
             csv+=headers.join();
+            var needTab = {};
+              for(var j in headers){
+                     var header = headers[j];
+              	  var value  = json[0][header];
+                         if(typeof value =="string" && value.match(/^\d{8,}$/)){
+                         	 	 //先简单只判断第一行长数字
+                             needTab[header] = true;
+                             csv = csv.replace(eval("/\\b"+header+"\\b/"),"\t"+header);
+                         }
+              }
+              
             //输出数据
             for(var i in json){
                 csv+="\n";
@@ -146,10 +157,13 @@
                          if(typeof value =="string" && (value.indexOf("\"")>-1 ||  value.indexOf(",")>-1)){
                              value = "\""+ (value.replace(/\"/g,"\"\""))+"\"";
                          }
-                         if(typeof value =="string" && value.match(/^\d{8,}$/)){
+                         
+                         if(needTab[header]){
                              value = "\t"+value;
                          }
-                         if((header.indexOf("time") > -1 || header.indexOf("gmt") > -1|| header.indexOf("date") > -1)&&  Number.isInteger(value)){
+                         
+                         var lowerHeader = header.toLowerCase();
+                         if((lowerHeader.indexOf("time") > -1 || lowerHeader.indexOf("gmt") > -1|| lowerHeader.indexOf("date") > -1)&&  Number.isInteger(value)){
                              value = new Date(value+3600*8*1000).toISOString().replace("T"," ").replace(/\..*/,"")
                          }
                      }
