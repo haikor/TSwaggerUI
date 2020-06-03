@@ -18,6 +18,7 @@
             function(i, responseBody) {
                 if ($(responseBody).find(".copyResponse").length > 0) return;
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyResponse' href='javascript:void(0);'>复制响应</a></div>"))
+                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyTsv' href='javascript:void(0);'>复制tsv</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='downCsv' href='javascript:void(0);'>下载csv</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
@@ -38,6 +39,21 @@
                 }
             });
 
+            new Clipboard('.copyTsv', {
+                text: function(trigger) {
+                    var $button = $(trigger);
+                    var value = $button.parents(".operation").find(".response_body").find("pre").text();
+                    var csv = "";
+                    if(value.indexOf("{")==0||value.indexOf("[")==0){
+                        csv = json2Xsv(JSON.parse(value),"t");
+                    }
+                    else{
+                        csv = value.replace(/,/g,"\t");
+                    }
+                    console.log(csv);
+                    return csv;
+                }
+            });
 
             $('.downCsv').each(function() {
                 var $button = $(this);
@@ -47,7 +63,13 @@
                 $button.data("done", true);
                 $button.click(function() {
                     var value = $(this).parents(".operation").find(".response_body").find("pre").text();
-                    var csv = json2csv(JSON.parse(value));
+                    var csv = "";
+                    if(value.indexOf("{")==0||value.indexOf("[")==0){
+                       csv = json2Xsv(JSON.parse(value),"c");
+                    }
+                    else{
+                        csv =  value.replace(/\t/g,',').replace(/\b\d{8,}\b/g,function(x){return "\t" + x;});
+                    }
                     var method = $(this).parents(".operation").attr("id");
                     saveAs(new Blob(["\ufeff" + csv], {
                         type: "text/csv;charset=utf-8"
@@ -130,7 +152,10 @@
         });
     }
 
-    function json2csv(json) {
+    function json2Xsv(json,type) {
+        var isCsv = type == "c";
+        var isTsv = type == "t";
+        var splitter = isCsv?",":"\t";
         if (!json) {
             return "";
         }
@@ -145,15 +170,17 @@
             headers = Array.from(new Set(headers));
             var csv = "";
             //输出头
-            csv += headers.join();
+            csv += headers.join(splitter);
             var needTab = {};
-            for (var j in headers) {
-                var header = headers[j];
-                var value = json[0][header];
-                if (typeof value == "string" && value.match(/^\d{8,}$/)) {
-                    //先简单只判断第一行长数字
-                    needTab[header] = true;
-                    csv = csv.replace(eval("/\\b" + header + "\\b/"), "\t" + header);
+            if(isCsv){
+                for (var j in headers) {
+                    var header = headers[j];
+                    var value = json[0][header];
+                    if (typeof value == "string" && value.match(/^\d{8,}$/)) {
+                        //先简单只判断第一行长数字
+                        needTab[header] = true;
+                        csv = csv.replace(eval("/\\b" + header + "\\b/"), "\t" + header);
+                    }
                 }
             }
 
@@ -163,18 +190,18 @@
                 for (var j in headers) {
                     var header = headers[j];
                     if (j > 0) {
-                        csv += ",";
+                        csv += splitter;
                     }
                     var value = json[i][header];
                     if (value) {
                         if (typeof value == "object") {
                             value = JSON.stringify(value);
                         }
-                        if (typeof value == "string" && (value.indexOf("\"") > -1 || value.indexOf(",") > -1)) {
+                        if (typeof value == "string" && (value.indexOf("\"") > -1 || value.indexOf(splitter) > -1)) {
                             value = "\"" + (value.replace(/\"/g, "\"\"")) + "\"";
                         }
 
-                        if (needTab[header]) {
+                        if (isCsv&&needTab[header]) {
                             value = "\t" + value;
                         }
 
@@ -196,11 +223,15 @@
             if (!json[k]) {
                 continue;
             }
+             if (Array.isArray(json[k]) && typeof(json[k][0]) != "object") {
+                 //不可展示为表格的数组
+                continue;
+            }
             if (Array.isArray(json[k])) {
-                return json2csv(json[k]);
+                return json2Xsv(json[k],type);
             }
             if (typeof(json[k]) == "object") {
-                var ret = json2csv(json[k]);
+                var ret = json2Xsv(json[k],type);
                 if (ret) {
                     return ret;
                 }
