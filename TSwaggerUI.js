@@ -21,6 +21,7 @@
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='downCsv' href='javascript:void(0);'>下载csv</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyCURL' href='javascript:void(0);'>复制CURL</a></div>"))
                 $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='copyURL' href='javascript:void(0);'>复制URL</a></div>"))
+                $(responseBody).append($("<div style='right:10px;float:right;margin:10px;top:10px;'><a class='showHumanTime' href='javascript:void(0);'>时间可视化</a></div>"))
                 added = true;
             }
 
@@ -54,6 +55,20 @@
                 });
             });
 
+             $('.showHumanTime').each(function() {
+                 var $button = $(this);
+                 if($button.data("done")){
+                     return;
+                 }
+                 $button.data("done",true);
+                 $button.click(function(){
+                 var value  = $(this).parents(".operation").find(".response_body").find("pre").html();
+                 value = value.replace(/>1\d{12}</g,function(x){return ">\""+new Date(parseInt(x.replace(">","").replace("<",""))+3600*8*1000).toISOString().replace("T"," ").replace(/\..*/,"")+ "\"<"});
+                 $(this).parents(".operation").find(".response_body").find("pre").html(value);
+                 });
+            }
+           );
+           
             new Clipboard('.copyURL', {
                 text: function(trigger) {
                     var $button = $(trigger);
